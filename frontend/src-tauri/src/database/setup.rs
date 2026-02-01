@@ -23,13 +23,34 @@ pub async fn initialize_workspace_manager(app: &AppHandle) -> Result<WorkspaceMa
     // Step 3: Decision tree
     if existing_db.exists() && workspaces.is_empty() {
         // Case A: MIGRATION -- existing database found but no workspaces yet.
-        // MIGRATION HOOK: Plan 04 will replace this with actual migration call.
-        // For now, create an empty Default workspace so the app is usable during development.
-        let default_id = workspace_mgr.create_workspace("Default".to_string()).await?;
-        workspace_mgr.switch_workspace(&default_id).await?;
-        log::warn!(
-            "Migration placeholder: created empty Default workspace. Existing data not yet migrated."
-        );
+        log::info!("Existing database found with no workspaces. Starting migration...");
+        match crate::workspace::migration::migrate_existing_database_to_workspace(
+            &workspace_mgr,
+            &existing_db,
+        )
+        .await
+        {
+            Ok(default_id) => {
+                log::info!(
+                    "Migration complete. Default workspace created: {}",
+                    default_id
+                );
+            }
+            Err(e) => {
+                log::error!(
+                    "Migration failed: {}. Creating empty Default workspace as fallback.",
+                    e
+                );
+                let fallback_id = workspace_mgr
+                    .create_workspace("Default".to_string())
+                    .await
+                    .map_err(|e| format!("Failed to create fallback workspace: {}", e))?;
+                workspace_mgr
+                    .switch_workspace(&fallback_id)
+                    .await
+                    .map_err(|e| format!("Failed to switch to fallback workspace: {}", e))?;
+            }
+        }
     } else if !workspaces.is_empty() {
         // Case B/C: Workspaces exist -- switch to last_active or first workspace.
         if let Some(last_active) = workspace_mgr.last_active_id().await {
