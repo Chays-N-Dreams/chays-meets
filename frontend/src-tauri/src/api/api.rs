@@ -13,7 +13,7 @@ use crate::{
         },
     },
     onboarding::load_onboarding_status,
-    state::AppState,
+    workspace::manager::WorkspaceManager,
     summary::CustomOpenAIConfig,
 };
 
@@ -322,16 +322,16 @@ async fn make_api_request<R: Runtime, T: for<'de> Deserialize<'de>>(
 #[tauri::command]
 pub async fn api_get_meetings<R: Runtime>(
     _app: AppHandle<R>,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
     auth_token: Option<String>,
 ) -> Result<Vec<Meeting>, String> {
     log_info!(
         "api_get_meetings called with auth_token(native) : {}",
         auth_token.is_some()
     );
-    let pool = state.db_manager.pool();
+    let pool = workspace_mgr.active_pool().await?;
     let meetings: Result<Vec<MeetingModel>, sqlx::Error> =
-        MeetingsRepository::get_meetings(pool).await;
+        MeetingsRepository::get_meetings(&pool).await;
 
     match meetings {
         Ok(meeting_models) => {
@@ -356,7 +356,7 @@ pub async fn api_get_meetings<R: Runtime>(
 #[tauri::command]
 pub async fn api_search_transcripts<R: Runtime>(
     _app: AppHandle<R>,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
     query: String,
     auth_token: Option<String>,
 ) -> Result<Vec<TranscriptSearchResult>, String> {
@@ -366,9 +366,9 @@ pub async fn api_search_transcripts<R: Runtime>(
         auth_token.is_some()
     );
 
-    let pool = state.db_manager.pool();
+    let pool = workspace_mgr.active_pool().await?;
 
-    match TranscriptsRepository::search_transcripts(pool, &query).await {
+    match TranscriptsRepository::search_transcripts(&pool, &query).await {
         Ok(results) => {
             log_info!(
                 "Search completed successfully with {} results.",
@@ -467,11 +467,11 @@ pub async fn api_update_profile<R: Runtime>(
 #[tauri::command]
 pub async fn api_get_model_config<R: Runtime>(
     app: AppHandle<R>,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
     _auth_token: Option<String>,
 ) -> Result<Option<ModelConfig>, String> {
     log_info!("api_get_model_config called (native)");
-    let pool = state.db_manager.pool();
+    let pool = workspace_mgr.global_pool();
 
     match SettingsRepository::get_model_config(pool).await {
         Ok(Some(config)) => {
@@ -517,7 +517,7 @@ pub async fn api_get_model_config<R: Runtime>(
 #[tauri::command]
 pub async fn api_save_model_config<R: Runtime>(
     _app: AppHandle<R>,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
     provider: String,
     model: String,
     whisper_model: String,
@@ -526,13 +526,13 @@ pub async fn api_save_model_config<R: Runtime>(
     _auth_token: Option<String>,
 ) -> Result<serde_json::Value, String> {
     log_info!(
-        "💾 api_save_model_config called (native): provider='{}', model='{}', whisperModel='{}', ollamaEndpoint={:?}",
+        "api_save_model_config called (native): provider='{}', model='{}', whisperModel='{}', ollamaEndpoint={:?}",
         &provider,
         &model,
         &whisper_model,
         &ollama_endpoint
     );
-    let pool = state.db_manager.pool();
+    let pool = workspace_mgr.global_pool();
 
     if let Err(e) = SettingsRepository::save_model_config(
         pool,
@@ -574,7 +574,7 @@ pub async fn api_save_model_config<R: Runtime>(
 #[tauri::command]
 pub async fn api_get_api_key<R: Runtime>(
     _app: AppHandle<R>,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
     provider: String,
     _auth_token: Option<String>,
 ) -> Result<String, String> {
@@ -582,7 +582,7 @@ pub async fn api_get_api_key<R: Runtime>(
         "api_get_api_key called (native) for provider '{}'",
         &provider
     );
-    match SettingsRepository::get_api_key(&state.db_manager.pool(), &provider).await {
+    match SettingsRepository::get_api_key(workspace_mgr.global_pool(), &provider).await {
         Ok(key) => {
             log_info!(
                 "Successfully retrieved API key for provider '{}'.",
@@ -600,11 +600,11 @@ pub async fn api_get_api_key<R: Runtime>(
 #[tauri::command]
 pub async fn api_get_transcript_config<R: Runtime>(
     _app: AppHandle<R>,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
     _auth_token: Option<String>,
 ) -> Result<Option<TranscriptConfig>, String> {
     log_info!("api_get_transcript_config called (native)");
-    let pool = state.db_manager.pool();
+    let pool = workspace_mgr.global_pool();
 
     match SettingsRepository::get_transcript_config(pool).await {
         Ok(Some(config)) => {
@@ -650,7 +650,7 @@ pub async fn api_get_transcript_config<R: Runtime>(
 #[tauri::command]
 pub async fn api_save_transcript_config<R: Runtime>(
     _app: AppHandle<R>,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
     provider: String,
     model: String,
     api_key: Option<String>,
@@ -660,7 +660,7 @@ pub async fn api_save_transcript_config<R: Runtime>(
         "api_save_transcript_config called (native) for provider '{}'",
         &provider
     );
-    let pool = state.db_manager.pool();
+    let pool = workspace_mgr.global_pool();
 
     if let Err(e) = SettingsRepository::save_transcript_config(pool, &provider, &model).await {
         log_error!("Failed to save transcript config: {}", e);
@@ -687,7 +687,7 @@ pub async fn api_save_transcript_config<R: Runtime>(
 #[tauri::command]
 pub async fn api_get_transcript_api_key<R: Runtime>(
     _app: AppHandle<R>,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
     provider: String,
     _auth_token: Option<String>,
 ) -> Result<String, String> {
@@ -695,7 +695,7 @@ pub async fn api_get_transcript_api_key<R: Runtime>(
         "api_get_transcript_api_key called (native) for provider '{}'",
         &provider
     );
-    match SettingsRepository::get_transcript_api_key(&state.db_manager.pool(), &provider).await {
+    match SettingsRepository::get_transcript_api_key(workspace_mgr.global_pool(), &provider).await {
         Ok(key) => {
             log_info!(
                 "Successfully retrieved transcript API key for provider '{}'.",
@@ -717,7 +717,7 @@ pub async fn api_get_transcript_api_key<R: Runtime>(
 #[tauri::command]
 pub async fn api_delete_api_key<R: Runtime>(
     _app: AppHandle<R>,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
     provider: String,
     _auth_token: Option<String>,
 ) -> Result<(), String> {
@@ -725,7 +725,7 @@ pub async fn api_delete_api_key<R: Runtime>(
         "log_api_delete_api_key called (native) for provider '{}'",
         &provider
     );
-    match SettingsRepository::delete_api_key(&state.db_manager.pool(), &provider).await {
+    match SettingsRepository::delete_api_key(workspace_mgr.global_pool(), &provider).await {
         Ok(_) => {
             log_info!("Successfully deleted API key for provider '{}'.", &provider);
             Ok(())
@@ -744,7 +744,7 @@ pub async fn api_delete_api_key<R: Runtime>(
 #[tauri::command]
 pub async fn api_delete_meeting<R: Runtime>(
     _app: AppHandle<R>,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
     meeting_id: String,
     auth_token: Option<String>,
 ) -> Result<serde_json::Value, String> {
@@ -754,9 +754,9 @@ pub async fn api_delete_meeting<R: Runtime>(
         auth_token.is_some()
     );
 
-    let pool = state.db_manager.pool();
+    let pool = workspace_mgr.active_pool().await?;
 
-    match MeetingsRepository::delete_meeting(pool, &meeting_id).await {
+    match MeetingsRepository::delete_meeting(&pool, &meeting_id).await {
         Ok(true) => {
             log_info!("Successfully deleted meeting {}", meeting_id);
             Ok(serde_json::json!({
@@ -782,7 +782,7 @@ pub async fn api_delete_meeting<R: Runtime>(
 pub async fn api_get_meeting<R: Runtime>(
     _app: AppHandle<R>,
     meeting_id: String,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
     auth_token: Option<String>,
 ) -> Result<MeetingDetails, String> {
     log_info!(
@@ -791,9 +791,9 @@ pub async fn api_get_meeting<R: Runtime>(
         auth_token.is_some()
     );
 
-    let pool = state.db_manager.pool();
+    let pool = workspace_mgr.active_pool().await?;
 
-    match MeetingsRepository::get_meeting(pool, &meeting_id).await {
+    match MeetingsRepository::get_meeting(&pool, &meeting_id).await {
         Ok(Some(meeting)) => {
             log_info!("Successfully retrieved meeting {}", meeting_id);
             Ok(meeting)
@@ -814,13 +814,13 @@ pub async fn api_get_meeting<R: Runtime>(
 pub async fn api_get_meeting_metadata<R: Runtime>(
     _app: AppHandle<R>,
     meeting_id: String,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
 ) -> Result<MeetingMetadata, String> {
     log_info!("api_get_meeting_metadata called for meeting_id: {}", meeting_id);
 
-    let pool = state.db_manager.pool();
+    let pool = workspace_mgr.active_pool().await?;
 
-    match MeetingsRepository::get_meeting_metadata(pool, &meeting_id).await {
+    match MeetingsRepository::get_meeting_metadata(&pool, &meeting_id).await {
         Ok(Some(meeting)) => {
             log_info!("Successfully retrieved meeting metadata {}", meeting_id);
             Ok(MeetingMetadata {
@@ -849,7 +849,7 @@ pub async fn api_get_meeting_transcripts<R: Runtime>(
     meeting_id: String,
     limit: i64,
     offset: i64,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
 ) -> Result<PaginatedTranscriptsResponse, String> {
     log_info!(
         "api_get_meeting_transcripts called for meeting_id: {}, limit: {}, offset: {}",
@@ -858,9 +858,9 @@ pub async fn api_get_meeting_transcripts<R: Runtime>(
         offset
     );
 
-    let pool = state.db_manager.pool();
+    let pool = workspace_mgr.active_pool().await?;
 
-    match MeetingsRepository::get_meeting_transcripts_paginated(pool, &meeting_id, limit, offset).await {
+    match MeetingsRepository::get_meeting_transcripts_paginated(&pool, &meeting_id, limit, offset).await {
         Ok((transcripts, total_count)) => {
             log_info!(
                 "Successfully retrieved {} transcripts for meeting {} (total: {})",
@@ -900,7 +900,7 @@ pub async fn api_get_meeting_transcripts<R: Runtime>(
 #[tauri::command]
 pub async fn api_save_meeting_title<R: Runtime>(
     _app: AppHandle<R>,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
     meeting_id: String,
     title: String,
     auth_token: Option<String>,
@@ -910,8 +910,8 @@ pub async fn api_save_meeting_title<R: Runtime>(
         meeting_id,
         auth_token.is_some()
     );
-    let pool = state.db_manager.pool();
-    match MeetingsRepository::update_meeting_title(pool, &meeting_id, &title).await {
+    let pool = workspace_mgr.active_pool().await?;
+    match MeetingsRepository::update_meeting_title(&pool, &meeting_id, &title).await {
         Ok(true) => {
             log_info!("Successfully saved meeting title");
             Ok(serde_json::json!({"message": "Meeting title saved successfully"}))
@@ -930,7 +930,7 @@ pub async fn api_save_meeting_title<R: Runtime>(
 #[tauri::command]
 pub async fn api_save_transcript<R: Runtime>(
     _app: AppHandle<R>,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
     meeting_title: String,
     transcripts: Vec<serde_json::Value>,
     folder_path: Option<String>,
@@ -971,11 +971,11 @@ pub async fn api_save_transcript<R: Runtime>(
                    first_seg.duration);
     }
 
-    let pool = state.db_manager.pool();
+    let pool = workspace_mgr.active_pool().await?;
 
     // Now, call the repository with the correctly typed data.
     match TranscriptsRepository::save_transcript(
-        pool,
+        &pool,
         &meeting_title,
         &transcripts_to_save,
         folder_path,
@@ -1008,19 +1008,19 @@ pub async fn api_save_transcript<R: Runtime>(
 #[tauri::command]
 pub async fn open_meeting_folder<R: Runtime>(
     _app: AppHandle<R>,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
     meeting_id: String,
 ) -> Result<(), String> {
     log_info!("open_meeting_folder called for meeting_id: {}", meeting_id);
 
-    let pool = state.db_manager.pool();
+    let pool = workspace_mgr.active_pool().await?;
 
     // Get meeting with folder_path
     let meeting: Option<MeetingModel> = sqlx::query_as(
         "SELECT id, title, created_at, updated_at, folder_path FROM meetings WHERE id = ?",
     )
     .bind(&meeting_id)
-    .fetch_optional(pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|e| format!("Database error: {}", e))?;
 
@@ -1172,7 +1172,7 @@ pub async fn open_external_url(url: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn api_save_custom_openai_config<R: Runtime>(
     _app: AppHandle<R>,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
     endpoint: String,
     api_key: Option<String>,
     model: String,
@@ -1225,7 +1225,7 @@ pub async fn api_save_custom_openai_config<R: Runtime>(
         top_p,
     };
 
-    let pool = state.db_manager.pool();
+    let pool = workspace_mgr.global_pool();
 
     match SettingsRepository::save_custom_openai_config(pool, &config).await {
         Ok(()) => {
@@ -1246,11 +1246,11 @@ pub async fn api_save_custom_openai_config<R: Runtime>(
 #[tauri::command]
 pub async fn api_get_custom_openai_config<R: Runtime>(
     _app: AppHandle<R>,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
 ) -> Result<Option<CustomOpenAIConfig>, String> {
     log_info!("api_get_custom_openai_config called");
 
-    let pool = state.db_manager.pool();
+    let pool = workspace_mgr.global_pool();
 
     match SettingsRepository::get_custom_openai_config(pool).await {
         Ok(config) => {

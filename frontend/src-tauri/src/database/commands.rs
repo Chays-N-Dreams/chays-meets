@@ -1,10 +1,10 @@
-use log::{error, info};
+use log::{error, info, warn};
 use serde::Serialize;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
 
 use super::manager::DatabaseManager;
-use crate::state::AppState;
+use crate::workspace::manager::WorkspaceManager;
 
 #[derive(Serialize)]
 pub struct DatabaseCheckResult {
@@ -12,12 +12,14 @@ pub struct DatabaseCheckResult {
     pub size: u64,
 }
 
-/// Check if this is the first launch (no database exists yet)
+/// Check if this is the first launch (no workspaces exist yet)
 #[tauri::command]
-pub async fn check_first_launch(app: AppHandle) -> Result<bool, String> {
-    DatabaseManager::is_first_launch(&app)
-        .await
-        .map_err(|e| format!("Failed to check first launch: {}", e))
+pub async fn check_first_launch(
+    _app: AppHandle,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
+) -> Result<bool, String> {
+    let workspaces = workspace_mgr.list_workspaces().await;
+    Ok(workspaces.is_empty())
 }
 
 /// Open a dialog to select a folder or file for legacy database import
@@ -141,7 +143,10 @@ pub async fn check_homebrew_database(path: String) -> Result<Option<DatabaseChec
     }
 }
 
-/// Import legacy database and initialize the database manager
+/// Import legacy database and initialize the database manager.
+/// TODO(Plan 04): This should create a workspace and import data into it via migration.
+/// For now, it copies the legacy DB and emits the initialized event, but does not
+/// create a new workspace from the imported data.
 #[tauri::command]
 pub async fn import_and_initialize_database(
     app: AppHandle,
@@ -152,18 +157,15 @@ pub async fn import_and_initialize_database(
         legacy_db_path
     );
 
-    // Import and get initialized manager
-    let db_manager = DatabaseManager::import_legacy_database(&app, &legacy_db_path)
+    // Import legacy database (copies to app data dir)
+    let _db_manager = DatabaseManager::import_legacy_database(&app, &legacy_db_path)
         .await
         .map_err(|e| {
             error!("Failed to import legacy database: {}", e);
             format!("Failed to import database: {}", e)
         })?;
 
-    // Update app state with the new manager
-    app.manage(AppState { db_manager });
-
-    info!("Legacy database imported and initialized successfully");
+    warn!("Legacy import completed but not yet workspace-aware. Data will be migrated in Plan 04.");
 
     // Emit event to notify frontend that database is ready
     app.emit("database-initialized", ())
@@ -172,24 +174,18 @@ pub async fn import_and_initialize_database(
     Ok(())
 }
 
-/// Initialize a fresh database (for users who don't want to import)
+/// Initialize a fresh database (for users who don't want to import).
+/// Uses WorkspaceManager's global pool for settings operations.
+/// The workspace itself is already created during app startup in setup.rs.
 #[tauri::command]
-pub async fn initialize_fresh_database(app: AppHandle) -> Result<(), String> {
-    info!("Initializing fresh database");
+pub async fn initialize_fresh_database(
+    app: AppHandle,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
+) -> Result<(), String> {
+    info!("Initializing fresh database with default settings");
 
-    let db_manager = DatabaseManager::new_from_app_handle(&app)
-        .await
-        .map_err(|e| {
-            error!("Failed to initialize fresh database: {}", e);
-            format!("Failed to initialize database: {}", e)
-        })?;
+    let pool = workspace_mgr.global_pool();
 
-    // Update app state with the new manager
-    app.manage(AppState { db_manager: db_manager.clone() });
-
-    // Set default model configuration for fresh installs
-    let pool = db_manager.pool();
-    
     // Default Summary Model: Built-in AI (Gemma 3 1B)
     if let Err(e) = crate::database::repositories::setting::SettingsRepository::save_model_config(
         pool,

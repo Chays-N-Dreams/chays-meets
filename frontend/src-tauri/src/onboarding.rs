@@ -4,7 +4,7 @@ use tauri_plugin_store::StoreExt;
 use log::{info, warn, error};
 use anyhow::Result;
 
-use crate::state::AppState;
+use crate::workspace::manager::WorkspaceManager;
 use crate::database::repositories::setting::SettingsRepository;
 
 
@@ -167,13 +167,13 @@ pub async fn reset_onboarding_status_cmd<R: Runtime>(
 #[tauri::command]
 pub async fn complete_onboarding<R: Runtime>(
     app: AppHandle<R>,
-    state: tauri::State<'_, AppState>,
+    workspace_mgr: tauri::State<'_, WorkspaceManager>,
     model: String,
 ) -> Result<(), String> {
     info!("Completing onboarding with builtin-ai model: {}", model);
 
-    // Step 1: Save model configuration to SQLite database FIRST
-    let pool = state.db_manager.pool();
+    // Step 1: Save model configuration to global SQLite database FIRST
+    let pool = workspace_mgr.global_pool();
 
     // Onboarding always uses builtin-ai (local LLM)
     if let Err(e) = SettingsRepository::save_model_config(
