@@ -453,3 +453,12 @@ $env:RUST_LOG="debug"; ./clean_run_windows.bat
 
 **Whisper Integration**:
 - [frontend/src-tauri/src/whisper_engine/whisper_engine.rs](frontend/src-tauri/src/whisper_engine/whisper_engine.rs) - Whisper model management and transcription
+
+## Important Guidelines for Claude Code
+
+### Always use:
+- serena for semantic code retrieval and editing tools
+- context7 for up to date documentation on third party code
+- sequential thinking for any decision making
+- linear for issue, milestone tracking and project management (team: Chays N Dreams)
+Read the claude.md root file before you do anything.
