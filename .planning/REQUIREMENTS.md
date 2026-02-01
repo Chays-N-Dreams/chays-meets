@@ -90,13 +90,48 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| _(populated during roadmap creation)_ | | |
+| WS-01 | Phase 2: Workspace CRUD + Sidebar Switcher | Pending |
+| WS-02 | Phase 2: Workspace CRUD + Sidebar Switcher | Pending |
+| WS-03 | Phase 2: Workspace CRUD + Sidebar Switcher | Pending |
+| WS-04 | Phase 1: Workspace Filesystem + DB Isolation | Pending |
+| WS-05 | Phase 2: Workspace CRUD + Sidebar Switcher | Pending |
+| WS-06 | Phase 2: Workspace CRUD + Sidebar Switcher | Pending |
+| WS-07 | Phase 1: Workspace Filesystem + DB Isolation | Pending |
+| WS-08 | Phase 3: Workspace Configuration | Pending |
+| WS-09 | Phase 3: Workspace Configuration | Pending |
+| WS-10 | Phase 3: Workspace Configuration | Pending |
+| MN-01 | Phase 6: Meeting Note Generation + Action Items | Pending |
+| MN-02 | Phase 6: Meeting Note Generation + Action Items | Pending |
+| MN-03 | Phase 7: Meeting Note Files + Obsidian Integration | Pending |
+| MN-04 | Phase 7: Meeting Note Files + Obsidian Integration | Pending |
+| MN-05 | Phase 7: Meeting Note Files + Obsidian Integration | Pending |
+| MN-06 | Phase 6: Meeting Note Generation + Action Items | Pending |
+| MN-07 | Phase 8: Meeting Templates | Pending |
+| MN-08 | Phase 8: Meeting Templates | Pending |
+| MN-09 | Phase 7: Meeting Note Files + Obsidian Integration | Pending |
+| MCP-01 | Phase 4: MCP Client Framework + Security | Pending |
+| MCP-02 | Phase 5: MCP Configuration + Status UI | Pending |
+| MCP-03 | Phase 5: MCP Configuration + Status UI | Pending |
+| MCP-04 | Phase 9: MCP Sync Trigger | Pending |
+| MCP-05 | Phase 4: MCP Client Framework + Security | Pending |
+| MCP-06 | Phase 4: MCP Client Framework + Security | Pending |
+| MCP-07 | Phase 4: MCP Client Framework + Security | Pending |
+| MCP-08 | Phase 5: MCP Configuration + Status UI | Pending |
+| MCP-09 | Phase 5: MCP Configuration + Status UI | Pending |
+| UI-01 | Phase 2: Workspace CRUD + Sidebar Switcher | Pending |
+| UI-02 | Phase 2: Workspace CRUD + Sidebar Switcher | Pending |
+| UI-03 | Phase 3: Workspace Configuration | Pending |
+| UI-04 | Phase 5: MCP Configuration + Status UI | Pending |
+| UI-05 | Phase 6: Meeting Note Generation + Action Items | Pending |
+| UI-06 | Phase 6: Meeting Note Generation + Action Items | Pending |
+| UI-07 | Phase 2: Workspace CRUD + Sidebar Switcher | Pending |
+| UI-08 | Phase 9: MCP Sync Trigger | Pending |
 
 **Coverage:**
 - v1 requirements: 30 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 30
+- Mapped to phases: 30
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-01*
-*Last updated: 2026-02-01 after initial definition*
+*Last updated: 2026-02-01 after roadmap creation*
