@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 ## Current Position
 
 Phase: 1 of 9 (Workspace Filesystem + DB Isolation)
-Plan: 0 of 3 in current phase
-Status: Ready to plan
-Last activity: 2026-02-01 -- Roadmap created with 9 phases covering 30 requirements
+Plan: 3 of 4 in current phase
+Status: In progress
+Last activity: 2026-02-01 -- Completed 01-03-PLAN.md (rewire command handlers to WorkspaceManager)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███░░░░░░░] ~8% (1 of ~12 estimated total plans, 3 of 4 in Phase 1)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: 0 hours
+- Total plans completed: 1
+- Average duration: 7min
+- Total execution time: ~7min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 1     | 1     | 7min  | 7min     |
 
 **Recent Trend:**
-- Last 5 plans: none
-- Trend: N/A
+- Last 5 plans: 01-03 (7min)
+- Trend: N/A (first plan)
 
 *Updated after each plan completion*
 
@@ -47,19 +47,23 @@ Recent decisions affecting current work:
 - Recording locks workspace switching (audio pipeline integrity)
 - rmcp 0.14 SDK for MCP client (official Rust SDK, stdio transport)
 - Manual MCP sync only for v0.3.0 (user controls data flow)
+- API keys stored in global.sqlite (not per-workspace) -- decided in 01-03
+- AppState fully retired, WorkspaceManager is sole Tauri state for DB access
+- Legacy import command marked TODO for Plan 04 migration
+- check_first_launch now checks workspace count instead of sqlite file existence
 
 ### Pending Todos
 
-None yet.
+- Plan 04: Replace migration placeholder in setup.rs Case A with actual migration logic
+- Plan 04: Make import_and_initialize_database workspace-aware
 
 ### Blockers/Concerns
 
 - Windows MCP process cleanup needs validation during Phase 4 (Job Objects API)
-- API key storage model (global vs per-workspace) needs decision in Phase 1
 - Large meeting history migration performance needs testing with realistic dataset
 
 ## Session Continuity
 
-Last session: 2026-02-01
-Stopped at: Roadmap created, ready to plan Phase 1
+Last session: 2026-02-01T18:02:00Z
+Stopped at: Completed 01-03-PLAN.md
 Resume file: None
