@@ -33,12 +33,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. On first launch after upgrade, all existing meetings, transcripts, and summaries are accessible in a "Default" workspace with zero data loss
   3. The Rust WorkspaceManager abstraction replaces direct AppState DB access so all database operations are routed through the active workspace's pool
   4. Multiple workspaces can coexist on disk without any data cross-contamination between their databases or files
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 01-01: Workspace filesystem layout and WorkspaceManager abstraction
-- [ ] 01-02: Per-workspace SQLite database pool and migration from single-DB
-- [ ] 01-03: Default workspace auto-creation and existing data migration
+- [ ] 01-01-PLAN.md — Workspace types, filesystem operations, and split migration SQL
+- [ ] 01-02-PLAN.md — WorkspaceManager struct with pool lifecycle management
+- [ ] 01-03-PLAN.md — Rewire all command handlers from AppState to WorkspaceManager
+- [ ] 01-04-PLAN.md — Existing data migration to Default workspace
 
 ### Phase 2: Workspace CRUD + Sidebar Switcher
 **Goal**: Users can create, manage, and switch between workspaces through the sidebar, with recording-safety guarantees
@@ -166,7 +167,7 @@ Note: Phase 4 depends only on Phase 1 (not Phase 2 or 3), so Phases 2-3 (workspa
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Workspace Filesystem + DB Isolation | 0/3 | Not started | - |
+| 1. Workspace Filesystem + DB Isolation | 0/4 | Planning complete | - |
 | 2. Workspace CRUD + Sidebar Switcher | 0/3 | Not started | - |
 | 3. Workspace Configuration | 0/2 | Not started | - |
 | 4. MCP Client Framework + Security | 0/3 | Not started | - |
