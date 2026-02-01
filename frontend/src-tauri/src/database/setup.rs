@@ -1,38 +1,49 @@
-use log::info;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
-use super::manager::DatabaseManager;
-use crate::state::AppState;
+use crate::workspace::manager::WorkspaceManager;
 
-/// Initialize database on app startup
-/// Handles first launch detection and conditional initialization
-pub async fn initialize_database_on_startup(app: &AppHandle) -> Result<(), String> {
-    // Check if this is the first launch (no database exists yet)
-    let is_first_launch = DatabaseManager::is_first_launch(app)
-        .await
-        .map_err(|e| format!("Failed to check first launch status: {}", e))?;
+/// Initialize the WorkspaceManager on app startup.
+///
+/// Creates workspace infrastructure, detects migration scenarios, and ensures
+/// an active workspace is available before returning.
+pub async fn initialize_workspace_manager(app: &AppHandle) -> Result<WorkspaceManager, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
 
-    if is_first_launch {
-        info!("First launch detected - will notify window when ready");
+    // Step 1: Initialize WorkspaceManager infrastructure (creates workspaces root, global.sqlite, loads registry).
+    // Returns with active_db: None -- no workspace is active yet.
+    let workspace_mgr = WorkspaceManager::init(app_data_dir.clone()).await?;
 
-        // Delay event emission to ensure window is ready and React listeners are registered
-        let app_handle = app.clone();
-        tauri::async_runtime::spawn(async move {
-            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-            app_handle
-                .emit("first-launch-detected", ())
-                .expect("Failed to emit first-launch-detected event");
-            info!("Emitted first-launch-detected after delay");
-        });
+    // Step 2: Detect migration scenario
+    let existing_db = app_data_dir.join("meeting_minutes.sqlite");
+    let workspaces = workspace_mgr.list_workspaces().await;
+
+    // Step 3: Decision tree
+    if existing_db.exists() && workspaces.is_empty() {
+        // Case A: MIGRATION -- existing database found but no workspaces yet.
+        // MIGRATION HOOK: Plan 04 will replace this with actual migration call.
+        // For now, create an empty Default workspace so the app is usable during development.
+        let default_id = workspace_mgr.create_workspace("Default".to_string()).await?;
+        workspace_mgr.switch_workspace(&default_id).await?;
+        log::warn!(
+            "Migration placeholder: created empty Default workspace. Existing data not yet migrated."
+        );
+    } else if !workspaces.is_empty() {
+        // Case B/C: Workspaces exist -- switch to last_active or first workspace.
+        if let Some(last_active) = workspace_mgr.last_active_id().await {
+            workspace_mgr.switch_workspace(&last_active).await?;
+        } else {
+            let first_id = workspaces[0].id.clone();
+            workspace_mgr.switch_workspace(&first_id).await?;
+        }
     } else {
-        // Normal flow - initialize database immediately
-        let db_manager = DatabaseManager::new_from_app_handle(app)
-            .await
-            .map_err(|e| format!("Failed to initialize database manager: {}", e))?;
-
-        app.manage(AppState { db_manager });
-        info!("Database initialized successfully");
+        // Case D: Fresh install -- no existing DB, no workspaces.
+        let default_id = workspace_mgr.create_workspace("Default".to_string()).await?;
+        workspace_mgr.switch_workspace(&default_id).await?;
+        log::info!("Fresh install: created Default workspace");
     }
 
-    Ok(())
+    Ok(workspace_mgr)
 }

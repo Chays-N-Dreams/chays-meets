@@ -485,11 +485,13 @@ pub fn run() {
             //     });
             // }
 
-            // Initialize database (handles first launch detection and conditional setup)
-            tauri::async_runtime::block_on(async {
-                database::setup::initialize_database_on_startup(&_app.handle()).await
+            // Initialize workspace manager (handles migration detection and workspace setup)
+            let workspace_manager = tauri::async_runtime::block_on(async {
+                database::setup::initialize_workspace_manager(&_app.handle()).await
             })
-            .expect("Failed to initialize database");
+            .expect("Failed to initialize workspace manager");
+            _app.manage(workspace_manager);
+            log::info!("WorkspaceManager initialized and registered as Tauri state");
 
             // Initialize bundled templates directory for dynamic template discovery
             log::info!("Initializing bundled templates directory...");
@@ -718,16 +720,16 @@ pub fn run() {
             if let tauri::RunEvent::Exit = event {
                 log::info!("Application exiting, cleaning up resources...");
                 tauri::async_runtime::block_on(async {
-                    // Clean up database connection and checkpoint WAL
-                    if let Some(app_state) = _app_handle.try_state::<state::AppState>() {
-                        log::info!("Starting database cleanup...");
-                        if let Err(e) = app_state.db_manager.cleanup().await {
-                            log::error!("Failed to cleanup database: {}", e);
+                    // Clean up active workspace pool
+                    if let Some(workspace_mgr) = _app_handle.try_state::<workspace::manager::WorkspaceManager>() {
+                        log::info!("Starting workspace manager cleanup...");
+                        if let Err(e) = workspace_mgr.close_active_workspace().await {
+                            log::error!("Failed to cleanup active workspace: {}", e);
                         } else {
-                            log::info!("Database cleanup completed successfully");
+                            log::info!("Workspace manager cleanup completed successfully");
                         }
                     } else {
-                        log::warn!("AppState not available for database cleanup (likely first launch)");
+                        log::warn!("WorkspaceManager not available for cleanup");
                     }
 
                     // Clean up sidecar
