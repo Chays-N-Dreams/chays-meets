@@ -157,6 +157,12 @@ impl DatabaseManager {
         Self::new_from_app_handle(app_handle).await
     }
 
+    /// Create a DatabaseManager from an existing pool.
+    /// Used by WorkspaceManager to wrap pools it creates directly.
+    pub fn from_pool(pool: SqlitePool) -> Self {
+        DatabaseManager { pool }
+    }
+
     pub fn pool(&self) -> &SqlitePool {
         &self.pool
     }
